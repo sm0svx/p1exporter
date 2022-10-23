@@ -1,0 +1,13 @@
+= P1 Exporter
+Tobias Blomberg
+
+== Introduction
+The P1 Exporter is a Micropython script designed for the Raspberry Pi Pico W
+hardware. It is used to read measurements from a power meter equipped with the
+P1 port.
+
+== Requirements
+This version of the application is tested with the following Micropython firmware:
+
+  rp2-pico-w-20221022-unstable-v1.19.1-555-g67f98ba10.uf2
+
