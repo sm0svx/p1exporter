@@ -27,3 +27,5 @@ The default configuration will make the Pico start up as an access point which
 can be connected to using another WiFi device. Connect to the Pico WiFi and go
 to http://192.168.4.1/config to do the initial configuration.
 
+NOTE: When pushing the 'Save' button at the configuration page the Pico will
+reboot. It may take some time for it to boot up and reconnect to the WiFi.
