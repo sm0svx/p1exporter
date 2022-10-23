@@ -11,3 +11,19 @@ This version of the application is tested with the following Micropython firmwar
 
   rp2-pico-w-20221022-unstable-v1.19.1-555-g67f98ba10.uf2
 
+== Installation
+The following files should be put in the Pico root directory:
+
+  metric.py
+  favicon.ico
+  p1_exporter.py  <-- Rename to main.py
+
+== Running
+When the application start for the first time it will write a default
+configuration to the root of the Pico filesystem, 'config.json'. This file is
+not meant to be edited by hand but it's possible.
+
+The default configuration will make the Pico start up as an access point which
+can be connected to using another WiFi device. Connect to the Pico WiFi and go
+to http://192.168.4.1/config to do the initial configuration.
+
