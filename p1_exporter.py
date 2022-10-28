@@ -16,18 +16,44 @@ import uos
 # handle the submit action.
 CONFIG_VARS = [
     {
-        'name': 'enable_oled',
-        'type': 'checkbox',
-        'text': 'Enable OLED',
-        'default': False,
+        'fieldset': 'System',
+        'name': 'tz_offset',
+        'type': 'number',
+        'text': 'Timezone Offset Seconds',
+        'min': -43200,
+        'max': 43200,
+        'default': 3600,
     },
     {
+        'fieldset': 'System',
         'name': 'enable_wdt',
         'type': 'checkbox',
         'text': 'Enable Watchdog Timer',
         'default': True,
     },
     {
+        'fieldset': 'WiFi',
+        'name': 'ap',
+        'type': 'checkbox',
+        'text': 'WiFi Access Point Mode',
+        'default': True,
+    },
+    {
+        'fieldset': 'WiFi',
+        'name': 'ssid',
+        'type': 'text',
+        'text': 'WiFi SSID',
+        'default': 'p1exporter',
+    },
+    {
+        'fieldset': 'WiFi',
+        'name': 'password',
+        'type': 'password',
+        'text': 'WiFi Password',
+        'default': 'p1exporter',
+    },
+    {
+        'fieldset': 'UART',
         'name': 'uart_no',
         'type': 'radio',
         'default': 1,
@@ -45,22 +71,25 @@ CONFIG_VARS = [
         ],
     },
     {
+        'fieldset': 'UART',
         'name': 'uart_tx_gpio',
         'type': 'number',
-        'text': 'UART TX GPIO Pin',
-        'min': 1,
-        'max': 40,
+        'text': 'UART TX GPIO',
+        'min': 0,
+        'max': 28,
         'default': 4,
     },
     {
+        'fieldset': 'UART',
         'name': 'uart_rx_gpio',
         'type': 'number',
-        'text': 'UART RX GPIO Pin',
-        'min': 1,
-        'max': 40,
+        'text': 'UART RX GPIO',
+        'min': 0,
+        'max': 28,
         'default': 5,
     },
     {
+        'fieldset': 'UART',
         'name': 'uart_baudrate',
         'type': 'number',
         'text': 'UART Baudrate',
@@ -69,6 +98,7 @@ CONFIG_VARS = [
         'default': 115200,
     },
     {
+        'fieldset': 'UART',
         'name': 'uart_bits',
         'type': 'radio',
         'default': 8,
@@ -86,32 +116,59 @@ CONFIG_VARS = [
         ],
     },
     {
-        'name': 'tz_offset',
-        'type': 'number',
-        'text': 'Timezone Offset Seconds',
-        'min': -43200,
-        'max': 43200,
-        'default': 3600,
-    },
-    {
-        'name': 'ap',
+        'fieldset': 'OLED',
+        'name': 'oled_enable',
         'type': 'checkbox',
-        'text': 'WiFi Access Point Mode',
-        'default': True,
+        'text': 'Enable OLED',
+        'default': False,
     },
     {
-        'name': 'ssid',
-        'type': 'text',
-        'text': 'WiFi SSID',
-        'default': 'p1exporter',
+        'fieldset': 'OLED',
+        'name': 'oled_i2c_no',
+        'type': 'radio',
+        'default': 0,
+        'selections': [
+            {
+                'id': 'i2c0',
+                'text': 'I2C 0',
+                'value': '0',
+            },
+            {
+                'id': 'i2c1',
+                'text': 'I2C 1',
+                'value': '1',
+            },
+        ],
     },
     {
-        'name': 'password',
-        'type': 'password',
-        'text': 'WiFi Password',
-        'default': 'p1exporter',
+        'fieldset': 'OLED',
+        'name': 'oled_sda_pin',
+        'type': 'number',
+        'text': 'I2C SDA GPIO',
+        'min': 0,
+        'max': 28,
+        'default': 0,
+    },
+    {
+        'fieldset': 'OLED',
+        'name': 'oled_scl_pin',
+        'type': 'number',
+        'text': 'I2C SCL GPIO',
+        'min': 0,
+        'max': 28,
+        'default': 1,
+    },
+    {
+        'fieldset': 'OLED',
+        'name': 'oled_i2c_freq',
+        'type': 'number',
+        'text': 'I2C Frequency',
+        'min': 1,
+        'max': 400000,
+        'default': 400000,
     },
 ]
+
 
 CONFIG_FILENAME = 'config.json'
 
@@ -151,12 +208,16 @@ if CONFIG_FILENAME in uos.listdir('/'):
         config = json.load(f)
 else:
     set_default_config()
-    
+
+for var in CONFIG_VARS:
+    if var['name'] not in config:
+        config[var['name']] = var['default']
+
 print('Config:', config)
 
-if config['enable_oled']:
+if config['oled_enable']:
     from ssd1306 import SSD1306_I2C
-    i2c = I2C(0, sda=Pin(0), scl=Pin(1), freq=400000)
+    i2c = I2C(config['oled_i2c_no'], sda=Pin(config['oled_sda_pin']), scl=Pin(config['oled_scl_pin']), freq=config['oled_i2c_freq'])
     oled = SSD1306_I2C(128, 64, i2c)
     oled.text("P1 Exporter", 0, 0)
     oled.text("WiFi connect...", 0, 16)
@@ -263,7 +324,7 @@ def wlan_setup_sta():
         else:
             status = wlan.ifconfig()
             print('Connected: IP=%s' % status[0])
-            if config['enable_oled']:
+            if config['oled_enable']:
                 oled.text(status[0], 0, 32)
                 oled.show()
 
@@ -546,12 +607,49 @@ def send_http_header(cl, code, headers=[]):
         cl.write(header)
         cl.write('\r\n')
     cl.write('\r\n')
-    
+
+class HtmlTopNav:
+    def __init__(self, title):
+        self.items = []
+        self.is_active = None
+        self.title = title
+
+    def addMenuItem(self, text, link):
+        self.items.append({
+            'text': text,
+            'link': link,
+            })
+
+    def setActive(self, text):
+        self.is_active = text
+
+    def setTitle(self, title):
+        self.title = title
+
+    def render(self, cl):
+        cl.write('<div class="topnav">\n')
+        for item in self.items:
+            cl.write('  <a %s href="%s">%s</a>\n' % ('class="active"' if item['text'] == self.is_active else '', item['link'], item['text']))
+        cl.write('<span class="title">%s</span>\n' % self.title)
+        cl.write('</div>\n')
+
+top_nav = HtmlTopNav('P1 Exporter')
+top_nav.addMenuItem('Home', '/')
+top_nav.addMenuItem('Config', '/config')
+top_nav.addMenuItem('Metrics', '/metrics')
+#top_nav.addMenuItem('About', '/about.html')
+top_nav.setActive('Home')
+
 def send_html_header(cl, code, headers):
     send_http_header(cl, code, headers)
     cl.write('<html>\n')
-    cl.write('<head><title>P1 Exporter</title><link rel="icon" type="image/x-icon" href="/favicon.ico"></head>\n')
+    cl.write('<head>\n')
+    cl.write('  <title>P1 Exporter</title>\n')
+    cl.write('  <link rel="icon" type="image/x-icon" href="/favicon.ico">\n')
+    cl.write('  <link rel="stylesheet" href="index.css">')
+    cl.write('</head>\n')
     cl.write('<body>\n')
+    top_nav.render(cl)
 
 def send_html_trailer(cl):
     cl.write('</body></html>\r\n')
@@ -563,16 +661,11 @@ def reply_with_error(cl, request, code):
     cl.close()
 
 def reply_with_index_page(cl):
+    top_nav.setActive('Home')
     send_html_header(cl, 200, ['Content-type: text/html;charset=utf-8'])
-    cl.write('<h1>P1 Exporter</h1>\n')
+    #cl.write('<h1>P1 Exporter</h1>\n')
     
-    cl.write('<a href="/metrics">Metrics</a>\n')
-    cl.write('<p/>\n')
-    
-    cl.write('<a href="/config">Configuration</a>\n')
-    cl.write('<p/>\n')
-    
-    cl.write('<table cellpadding="5">\n')
+    cl.write('<table id="meter">\n')
     cl.write('<tr><th>Beskrivning</th><th>Värde</th><th>Tidsstämpel</th></tr>\n')
     
     for obis in obis_display_order:
@@ -593,22 +686,30 @@ def reply_with_index_page(cl):
     
     send_html_trailer(cl)
 
-def reply_with_favicon(cl):
-    print("### Send favicon")
-    if 'favicon.ico' in uos.listdir('/'):
-        send_http_header(cl, 200, ['Content-type: image/x-icon'])
-        with open('/favicon.ico', 'rb') as f:
-            cl.sendall(f.read())
-    else:
-        send_http_header(404)
-    cl.close()
-    print('### Done sending favicon')
+#def reply_with_favicon(cl):
+#    print("### Send favicon")
+#    if 'favicon.ico' in uos.listdir('/'):
+#        send_http_header(cl, 200, ['Content-type: image/x-icon'])
+#        with open('/favicon.ico', 'rb') as f:
+#            cl.sendall(f.read())
+#    else:
+#        send_http_header(404)
+#    cl.close()
+#    print('### Done sending favicon')
     
 def reply_with_config_page(cl):
+    top_nav.setActive('Config')
     send_html_header(cl, 200, ['Content-type: text/html;charset=utf-8'])
-    cl.write('<h1>P1 Exporter Configuration</h1>\n')
+    #cl.write('<h1>P1 Exporter Configuration</h1>\n')
     cl.write('<form action="/save_config">\n')
+    prev_fieldset = None
     for input in CONFIG_VARS:
+        if input['fieldset'] != prev_fieldset:
+            if prev_fieldset is not None:
+                cl.write('</fieldset>\n')
+            cl.write('<fieldset>\n')
+            cl.write('<legend>%s</legend>\n' % input['fieldset'])
+            prev_fieldset = input['fieldset']
         if input['type'] == 'checkbox':
             cl.write('<input name="%s" value="" type="hidden"/>\n' % (input['name']))
             cl.write('<input id="%s" name="%s" type="checkbox" %s/>\n' % (input['name'], input['name'], 'checked' if config[input['name']] else ''))
@@ -619,14 +720,15 @@ def reply_with_config_page(cl):
                          % (sel['id'], input['name'], sel['value'], 'checked' if sel['value'] == str(config[input['name']]) else ''))
                 cl.write('<label for="%s">%s</label>\n' % (sel['id'], sel['text']))
         elif input['type'] == 'number':
-            cl.write('<label for="%s">%s:</label>\n' % (input['name'], input['text']))
+            cl.write('<label for="%s">%s:</label><br/>\n' % (input['name'], input['text']))
             cl.write('<input id="%s" name="%s" value="%s" type="number" min="%d" max="%d"/>\n'
                      % (input['name'], input['name'], config[input['name']], input['min'], input['max']))
         elif input['type'] in {'text', 'password'}:
-            cl.write('<label for="%s">%s:</label>\n' % (input['name'], input['text']))
+            cl.write('<label for="%s">%s:</label><br/>\n' % (input['name'], input['text']))
             cl.write('<input id="%s" name="%s" value="%s" type="%s"/>\n'
                      % (input['name'], input['name'], config[input['name']], input['type']))
         cl.write('<br/>')
+    cl.write('</fieldset>\n')
     cl.write('<input type="reset" value="Reset"><input type="submit" value="Save">\n')
     cl.write('</form>\n')
     send_html_trailer(cl)
@@ -718,6 +820,17 @@ def reply_with_openmetrics(cl, wait):
         send_openmetrics(cl)
         cl.close()
 
+def reply_with_file(cl, filename, content_type):
+    print("### Send file:", filename)
+    if filename in uos.listdir('/'):
+        send_http_header(cl, 200, ['Content-type: %s' % content_type])
+        with open('/%s' % filename, 'rb') as f:
+            cl.sendall(f.read())
+    else:
+        send_http_header(404)
+    cl.close()
+    print('### Done sending file')
+
 def process_http_request():
     try:
         cl, addr = s.accept()
@@ -742,7 +855,7 @@ def process_http_request():
         if request.startswith('GET / '):
             reply_with_index_page(cl)
         elif request.startswith('GET /favicon.ico '):
-            reply_with_favicon(cl)
+            reply_with_file(cl, 'favicon.ico', 'image/x-icon')
         elif request.startswith('GET /config '):
             reply_with_config_page(cl)
         elif request.startswith('GET /save_config?'):
@@ -751,6 +864,8 @@ def process_http_request():
             reply_with_openmetrics(cl, False)
         elif request.startswith('GET /waitmetrics '):
             reply_with_openmetrics(cl, True)
+        elif request.startswith('GET /index.css '):
+            reply_with_file(cl, 'index.css', 'text/css')
         else:
             #print(request)
             reply_with_error(cl, request, 404)
@@ -859,7 +974,7 @@ def decode_p1_msg(msg):
                 #print(labels)
                 metric.set_value(value, labels, timestamp)
 
-    if config['enable_oled']:
+    if config['oled_enable']:
         # Clear screen
         oled.fill(0)
         
