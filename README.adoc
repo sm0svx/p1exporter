@@ -14,8 +14,9 @@ This version of the application is tested with the following Micropython firmwar
 == Installation
 The following files should be put in the Pico root directory:
 
-  metric.py
   favicon.ico
+  index.css
+  metric.py
   p1_exporter.py  <-- Rename to main.py
 
 == Running
